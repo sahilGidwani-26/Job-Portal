@@ -72,29 +72,58 @@ export const getCompanyById = async (req, res) => {
 export const updateCompany = async (req, res) => {
     try {
         const { name, description, website, location } = req.body;
- 
-        const file = req.file;
-        // idhar cloudinary ayega
-        const fileUri = getDataUri(file);
-        const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
-        const logo = cloudResponse.secure_url;
-    
-        const updateData = { name, description, website, location, logo };
 
-        const company = await Company.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        let logo;
+
+        // ✅ Only upload if file exists
+        if (req.file) {
+            const fileUri = getDataUri(req.file);
+
+            if (fileUri) {
+                const cloudResponse = await cloudinary.uploader.upload(
+                    fileUri.content,
+                    { resource_type: "auto" } // important
+                );
+
+                logo = cloudResponse.secure_url;
+            }
+        }
+
+        const updateData = {
+            name,
+            description,
+            website,
+            location
+        };
+
+        // ✅ only add logo if uploaded
+        if (logo) {
+            updateData.logo = logo;
+        }
+
+        const company = await Company.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true }
+        );
 
         if (!company) {
             return res.status(404).json({
                 message: "Company not found.",
                 success: false
-            })
+            });
         }
+
         return res.status(200).json({
-            message:"Company information updated.",
-            success:true
-        })
+            message: "Company information updated.",
+            success: true
+        });
 
     } catch (error) {
         console.log(error);
+        return res.status(500).json({
+            message: "Server Error",
+            success: false
+        });
     }
-}
+};

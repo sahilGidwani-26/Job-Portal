@@ -1,27 +1,40 @@
 import React, { useState } from 'react'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
-import { Label } from './ui/label'
-import { Input } from './ui/input'
-import { Button } from './ui/button'
-import { Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import { Loader2, User, Mail, Phone, FileText, AlignLeft, Sparkles, Upload } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import axios from 'axios'
 import { USER_API_END_POINT } from '@/utils/constant'
 import { setUser } from '@/redux/authSlice'
 import { toast } from 'sonner'
 
+const InputField = ({ icon: Icon, label, id, ...props }) => (
+    <div className="space-y-1.5">
+        <label htmlFor={id} className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+            <Icon className="h-3.5 w-3.5 text-[#6A38C2]" />
+            {label}
+        </label>
+        <input
+            id={id}
+            {...props}
+            className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-[#6A38C2] focus:outline-none text-gray-900 text-sm transition-colors duration-200 bg-gray-50 focus:bg-white"
+        />
+    </div>
+)
+
 const UpdateProfileDialog = ({ open, setOpen }) => {
     const [loading, setLoading] = useState(false);
     const { user } = useSelector(store => store.auth);
+    const [fileName, setFileName] = useState(user?.profile?.resumeOriginalName || '');
 
     const [input, setInput] = useState({
         fullname: user?.fullname || "",
         email: user?.email || "",
         phoneNumber: user?.phoneNumber || "",
         bio: user?.profile?.bio || "",
-        skills: user?.profile?.skills?.map(skill => skill) || "",
+        skills: user?.profile?.skills?.join(', ') || "",
         file: user?.profile?.resume || ""
     });
+
     const dispatch = useDispatch();
 
     const changeEventHandler = (e) => {
@@ -30,7 +43,10 @@ const UpdateProfileDialog = ({ open, setOpen }) => {
 
     const fileChangeHandler = (e) => {
         const file = e.target.files?.[0];
-        setInput({ ...input, file })
+        if (file) {
+            setFileName(file.name);
+            setInput({ ...input, file });
+        }
     }
 
     const submitHandler = async (e) => {
@@ -41,15 +57,12 @@ const UpdateProfileDialog = ({ open, setOpen }) => {
         formData.append("phoneNumber", input.phoneNumber);
         formData.append("bio", input.bio);
         formData.append("skills", input.skills);
-        if (input.file) {
-            formData.append("file", input.file);
-        }
+        if (input.file) formData.append("file", input.file);
+
         try {
             setLoading(true);
             const res = await axios.post(`${USER_API_END_POINT}/profile/update`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                },
+                headers: { 'Content-Type': 'multipart/form-data' },
                 withCredentials: true
             });
             if (res.data.success) {
@@ -57,99 +70,128 @@ const UpdateProfileDialog = ({ open, setOpen }) => {
                 toast.success(res.data.message);
             }
         } catch (error) {
-            console.log(error);
-            toast.error(error.response.data.message);
-        } finally{
+            toast.error(error.response?.data?.message || 'Something went wrong');
+        } finally {
             setLoading(false);
         }
         setOpen(false);
-        console.log(input);
     }
 
-
-
     return (
-        <div>
-            <Dialog open={open}>
-                <DialogContent className="sm:max-w-[425px]" onInteractOutside={() => setOpen(false)}>
-                    <DialogHeader>
-                        <DialogTitle>Update Profile</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={submitHandler}>
-                        <div className='grid gap-4 py-4'>
-                            <div className='grid grid-cols-4 items-center gap-4'>
-                                <Label htmlFor="name" className="text-right">Name</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    type="text"
-                                    value={input.fullname}
-                                    onChange={changeEventHandler}
-                                    className="col-span-3"
-                                />
-                            </div>
-                            <div className='grid grid-cols-4 items-center gap-4'>
-                                <Label htmlFor="email" className="text-right">Email</Label>
-                                <Input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    value={input.email}
-                                    onChange={changeEventHandler}
-                                    className="col-span-3"
-                                />
-                            </div>
-                            <div className='grid grid-cols-4 items-center gap-4'>
-                                <Label htmlFor="number" className="text-right">Number</Label>
-                                <Input
-                                    id="number"
-                                    name="number"
-                                    value={input.phoneNumber}
-                                    onChange={changeEventHandler}
-                                    className="col-span-3"
-                                />
-                            </div>
-                            <div className='grid grid-cols-4 items-center gap-4'>
-                                <Label htmlFor="bio" className="text-right">Bio</Label>
-                                <Input
-                                    id="bio"
-                                    name="bio"
-                                    value={input.bio}
-                                    onChange={changeEventHandler}
-                                    className="col-span-3"
-                                />
-                            </div>
-                            <div className='grid grid-cols-4 items-center gap-4'>
-                                <Label htmlFor="skills" className="text-right">Skills</Label>
-                                <Input
-                                    id="skills"
-                                    name="skills"
-                                    value={input.skills}
-                                    onChange={changeEventHandler}
-                                    className="col-span-3"
-                                />
-                            </div>
-                            <div className='grid grid-cols-4 items-center gap-4'>
-                                <Label htmlFor="file" className="text-right">Resume</Label>
-                                <Input
-                                    id="file"
-                                    name="file"
-                                    type="file"
-                                    accept="application/pdf"
-                                    onChange={fileChangeHandler}
-                                    className="col-span-3"
-                                />
-                            </div>
+        <Dialog open={open}>
+            <DialogContent
+                className="sm:max-w-[500px] p-0 overflow-hidden rounded-3xl border-0 shadow-2xl"
+                onInteractOutside={() => setOpen(false)}
+            >
+                {/* Header */}
+                <div className="bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] px-8 py-6">
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center">
+                            <Sparkles className="h-5 w-5 text-purple-300" />
                         </div>
-                        <DialogFooter>
-                            {
-                                loading ? <Button className="w-full my-4"> <Loader2 className='mr-2 h-4 w-4 animate-spin' /> Please wait </Button> : <Button type="submit" className="w-full my-4">Update</Button>
-                            }
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-        </div>
+                        <div>
+                            <DialogTitle className="text-white font-black text-lg">Update Profile</DialogTitle>
+                            <p className="text-white/50 text-xs mt-0.5">Keep your information up to date</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={submitHandler} className="px-8 py-6 space-y-4">
+                    <InputField
+                        icon={User}
+                        label="Full Name"
+                        id="fullname"
+                        name="fullname"
+                        type="text"
+                        value={input.fullname}
+                        onChange={changeEventHandler}
+                        placeholder="Your full name"
+                    />
+                    <InputField
+                        icon={Mail}
+                        label="Email"
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={input.email}
+                        onChange={changeEventHandler}
+                        placeholder="your@email.com"
+                    />
+                    <InputField
+                        icon={Phone}
+                        label="Phone Number"
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        type="text"
+                        value={input.phoneNumber}
+                        onChange={changeEventHandler}
+                        placeholder="+91 XXXXX XXXXX"
+                    />
+                    <InputField
+                        icon={AlignLeft}
+                        label="Bio"
+                        id="bio"
+                        name="bio"
+                        type="text"
+                        value={input.bio}
+                        onChange={changeEventHandler}
+                        placeholder="A short bio about yourself"
+                    />
+                    <InputField
+                        icon={Sparkles}
+                        label="Skills (comma separated)"
+                        id="skills"
+                        name="skills"
+                        type="text"
+                        value={input.skills}
+                        onChange={changeEventHandler}
+                        placeholder="React, Node.js, Python..."
+                    />
+
+                    {/* File upload */}
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-[#6A38C2]" />
+                            Resume (PDF)
+                        </label>
+                        <label
+                            htmlFor="file"
+                            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-[#6A38C2] cursor-pointer transition-colors duration-200 bg-gray-50 hover:bg-purple-50 group"
+                        >
+                            <Upload className="h-5 w-5 text-gray-400 group-hover:text-[#6A38C2] transition-colors" />
+                            <span className="text-sm text-gray-500 group-hover:text-[#6A38C2] transition-colors truncate">
+                                {fileName || 'Click to upload PDF'}
+                            </span>
+                            <input
+                                id="file"
+                                name="file"
+                                type="file"
+                                accept="application/pdf"
+                                onChange={fileChangeHandler}
+                                className="sr-only"
+                            />
+                        </label>
+                    </div>
+
+                    {/* Submit */}
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6A38C2] to-[#a855f7] text-white font-bold text-base hover:shadow-lg hover:shadow-purple-500/30 transition-all duration-200 disabled:opacity-70 flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    Saving changes...
+                                </>
+                            ) : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
     )
 }
 
